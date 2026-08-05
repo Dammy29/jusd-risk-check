@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JUSD Wallet Risk Check</title>
+<style>
+  :root{
+    --bg: #0B0E11;
+    --surface: #12161B;
+    --surface-2: #181D24;
+    --border: #242A33;
+    --text: #E7E9EC;
+    --text-muted: #8A93A3;
+    --amber: #F0B429;
+    --red: #E5484D;
+    --green: #2FBF71;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--sans); -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--amber);}
+  .wrap{max-width:920px; margin:0 auto; padding:28px 20px 80px;}
+
+  .banner{
+    border:1px solid #3A2E14; background:linear-gradient(180deg,#1A140A,#12161B 60%);
+    border-radius:10px; padding:16px 18px; margin-bottom:24px;
+    display:flex; gap:12px; align-items:flex-start;
+  }
+  .banner .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);margin-top:6px;flex:none;
+    box-shadow:0 0 0 4px rgba(240,180,41,0.15);}
+  .banner p{margin:0; font-size:13px; line-height:1.5; color:var(--text-muted);}
+  .banner b{color:var(--text);}
+
+  header.hero{ text-align:center; padding: 20px 0 32px; }
+  .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--text-muted); margin-bottom:10px;
+  }
+  h1{
+    font-size:clamp(28px,4vw,40px); line-height:1.15; margin:0 0 14px;
+    font-weight:700; letter-spacing:-0.02em;
+  }
+  h1 span{color:var(--amber);}
+
+  .countdown{
+    font-family:var(--mono); font-size:clamp(22px,5vw,34px); font-weight:600;
+    letter-spacing:0.02em; margin: 4px 0 6px; color:var(--text);
+  }
+  .countdown-label{font-size:12px; color:var(--text-muted);}
+  .countdown-bar{
+    height:6px; width:100%; max-width:420px; margin:16px auto 0;
+    background:var(--surface-2); border-radius:99px; overflow:hidden; border:1px solid var(--border);
+  }
+  .countdown-bar-fill{height:100%; background:linear-gradient(90deg,var(--green),var(--amber),var(--red)); }
+
+  .search-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:20px; margin-top:28px;
+  }
+  .search-row{display:flex; gap:8px;}
+  input#addrInput{
+    flex:1; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    padding:12px 14px; border-radius:8px; font-family:var(--mono); font-size:14px;
+    outline:none;
+  }
+  input#addrInput:focus{border-color:var(--amber);}
+  button#checkBtn{
+    background:var(--amber); color:#1A1400; border:none; padding:0 20px; border-radius:8px;
+    font-weight:600; cursor:pointer; font-size:14px;
+  }
+  button#checkBtn:hover{filter:brightness(1.08);}
+  button#checkBtn:disabled{opacity:.5; cursor:progress;}
+
+  #result{margin-top:16px; font-size:14px;}
+  .result-box{border-radius:8px; padding:14px 16px; border:1px solid var(--border); display:flex; gap:12px; align-items:flex-start;}
+  .result-box.risk{border-color:#3A2418; background:#1A0F0A;}
+  .result-box.safe{border-color:#173323; background:#0E1A13;}
+  .result-box.none{border-color:var(--border); background:var(--surface-2);}
+  .result-box b{display:block; margin-bottom:4px;}
+  .result-box .amount{font-family:var(--mono); font-size:16px;}
+
+  .stats{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:32px 0 8px;
+  }
+  .stat{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px;}
+  .stat .n{font-family:var(--mono); font-size:22px; font-weight:600;}
+  .stat .l{font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; margin-top:2px;}
+
+  .section-head{
+    display:flex; justify-content:space-between; align-items:center; margin:32px 0 12px; gap:12px; flex-wrap:wrap;
+  }
+  .section-head h2{font-size:15px; margin:0; color:var(--text);}
+  .toggle-group{display:flex; border:1px solid var(--border); border-radius:8px; overflow:hidden;}
+  .toggle-group button{
+    background:var(--surface); color:var(--text-muted); border:none; padding:7px 12px; font-size:12px;
+    cursor:pointer; font-family:var(--sans);
+  }
+  .toggle-group button.active{background:var(--surface-2); color:var(--text); font-weight:600;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  thead th{
+    text-align:left; color:var(--text-muted); font-weight:500; font-size:11px; text-transform:uppercase;
+    letter-spacing:.05em; padding:8px 10px; border-bottom:1px solid var(--border);
+  }
+  tbody td{padding:10px; border-bottom:1px solid var(--border); font-family:var(--mono); font-size:12.5px;}
+  tbody tr:hover{background:var(--surface);}
+  .tag{
+    display:inline-block; font-family:var(--sans); font-size:10px; padding:2px 7px; border-radius:99px;
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+  .tag.eoa{background:#0E1A13; color:var(--green); border:1px solid #173323;}
+  .tag.contract{background:var(--surface-2); color:var(--text-muted); border:1px solid var(--border);}
+  .pct{color:var(--text-muted);}
+
+  #loading{color:var(--text-muted); font-size:13px; padding:20px 0; text-align:center;}
+  .progress-track{height:4px; background:var(--surface-2); border-radius:99px; overflow:hidden; margin-top:8px; max-width:280px; margin-left:auto; margin-right:auto;}
+  .progress-fill{height:100%; background:var(--amber); width:0%; transition:width .2s;}
+
+  footer{margin-top:40px; padding-top:20px; border-top:1px solid var(--border); font-size:12px; color:var(--text-muted); line-height:1.6;}
+  .cta-swap{
+    display:inline-block; margin-top:6px; background:var(--amber); color:#1A1400; text-decoration:none;
+    padding:8px 14px; border-radius:8px; font-weight:600; font-size:13px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="banner">
+    <div class="dot"></div>
+    <p><b>Unofficial, read-only tool.</b> This page reads public holder data from the Citrea block explorer. It does not connect wallets, hold funds, or process swaps. Always complete any swap directly at the official site — verify the URL yourself before entering it.</p>
+  </div>
+
+  <header class="hero">
+    <div class="eyebrow">JUSD · Citrea Mainnet</div>
+    <h1>Is your wallet <span>at risk</span>?</h1>
+    <div class="countdown" id="countdown">—</div>
+    <div class="countdown-label">until the JUSD → USDT swap window closes (10 Aug 2026, 12:57 UTC)</div>
+    <div class="countdown-bar"><div class="countdown-bar-fill" id="barFill" style="width:0%"></div></div>
+  </header>
+
+  <div class="search-card">
+    <div class="search-row">
+      <input id="addrInput" type="text" placeholder="Paste a wallet address, e.g. 0x..." autocomplete="off" spellcheck="false">
+      <button id="checkBtn">Check</button>
+    </div>
+    <div id="result"></div>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="stat"><div class="n" id="statHolders">…</div><div class="l">Total holders</div></div>
+    <div class="stat"><div class="n" id="statEoa">…</div><div class="l">Individual wallets</div></div>
+    <div class="stat"><div class="n" id="statContracts">…</div><div class="l">Protocol contracts</div></div>
+    <div class="stat"><div class="n" id="statSupply">…</div><div class="l">Circulating JUSD</div></div>
+  </div>
+
+  <div id="loading">
+    Loading holder list from Citrea explorer…
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <div class="section-head" style="display:none;" id="tableHead">
+    <h2>Holders</h2>
+    <div class="toggle-group" id="filterGroup">
+      <button data-filter="eoa" class="active">Individual wallets</button>
+      <button data-filter="all">All addresses</button>
+      <button data-filter="contract">Protocol contracts</button>
+    </div>
+  </div>
+
+  <table id="holderTable" style="display:none;">
+    <thead><tr><th>Address</th><th>Type</th><th style="text-align:right;">JUSD balance</th><th style="text-align:right;">% supply</th></tr></thead>
+    <tbody id="holderBody"></tbody>
+  </table>
+
+  <footer>
+    <div>Data source: <a href="https://explorer.mainnet.citrea.xyz/token/0x0987D3720D38847ac6dBB9D025B9dE892a3CA35C" target="_blank" rel="noopener">Citrea Blockscout explorer</a>, refreshed on page load. Not affiliated with JuiceDollar or JuiceSwap.</div>
+    <a class="cta-swap" href="https://bapp.juicedollar.com/swap" target="_blank" rel="noopener">Go to official swap page →</a>
+  </footer>
+
+</div>
+
+<script>
+const TOKEN = "0x0987D3720D38847ac6dBB9D025B9dE892a3CA35C";
+const API_BASE = "https://explorer.mainnet.citrea.xyz/api/v2";
+const DEADLINE = new Date("2026-08-10T12:57:00Z");
+const START = new Date("2026-07-31T08:46:00Z"); // approx notice time, for progress bar
+const DECIMALS = 18;
+
+let holders = []; // { address, isContract, name, raw (BigInt), value (number) }
+let totalSupplyRaw = null;
+
+function fmtNum(n, max=2){
+  return n.toLocaleString(undefined,{maximumFractionDigits:max});
+}
+
+function rawToNumber(raw){
+  // raw is a BigInt string in base units; convert to float safely for display
+  const s = raw.toString().padStart(DECIMALS+1,"0");
+  const intPart = s.slice(0, -DECIMALS) || "0";
+  const fracPart = s.slice(-DECIMALS).slice(0,6);
+  return parseFloat(intPart + "." + fracPart);
+}
+
+function tickCountdown(){
+  const now = new Date();
+  const diff = DEADLINE - now;
+  const el = document.getElementById("countdown");
+  const bar = document.getElementById("barFill");
+  if(diff <= 0){
+    el.textContent = "Swap window closed";
+    bar.style.width = "100%";
+    return;
+  }
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  el.textContent = `${d}d ${h}h ${m}m ${s}s`;
+  const total = DEADLINE - START;
+  const elapsed = now - START;
+  bar.style.width = Math.min(100, Math.max(0,(elapsed/total)*100)) + "%";
+}
+setInterval(tickCountdown, 1000);
+tickCountdown();
+
+async function fetchAllHolders(){
+  let url = `${API_BASE}/tokens/${TOKEN}/holders`;
+  let params = "";
+  let page = 0;
+  const progressFill = document.getElementById("progressFill");
+  while(url){
+    const res = await fetch(url + params);
+    if(!res.ok) throw new Error("Explorer API error " + res.status);
+    const data = await res.json();
+    for(const item of (data.items || [])){
+      holders.push({
+        address: item.address.hash,
+        isContract: !!item.address.is_contract,
+        name: item.address.name || item.address.ens_domain_name || null,
+        raw: item.value
+      });
+    }
+    page++;
+    progressFill.style.width = Math.min(95, page*8) + "%";
+    if(data.next_page_params){
+      params = "?" + new URLSearchParams(data.next_page_params).toString();
+    } else {
+      url = null;
+    }
+    if(page > 60) break; // safety cap
+  }
+  progressFill.style.width = "100%";
+}
+
+async function fetchSupply(){
+  const res = await fetch(`${API_BASE}/tokens/${TOKEN}`);
+  if(res.ok){
+    const data = await res.json();
+    totalSupplyRaw = data.total_supply;
+  }
+}
+
+function renderStats(){
+  const eoa = holders.filter(h => !h.isContract);
+  const contracts = holders.filter(h => h.isContract);
+  document.getElementById("statHolders").textContent = fmtNum(holders.length,0);
+  document.getElementById("statEoa").textContent = fmtNum(eoa.length,0);
+  document.getElementById("statContracts").textContent = fmtNum(contracts.length,0);
+  if(totalSupplyRaw){
+    document.getElementById("statSupply").textContent = fmtNum(rawToNumber(totalSupplyRaw),0);
+  } else {
+    document.getElementById("statSupply").textContent = "—";
+  }
+}
+
+function renderTable(filter){
+  const supplyNum = totalSupplyRaw ? rawToNumber(totalSupplyRaw) : null;
+  let rows = holders.slice().sort((a,b) => (BigInt(b.raw) > BigInt(a.raw) ? 1 : -1));
+  if(filter === "eoa") rows = rows.filter(h => !h.isContract);
+  if(filter === "contract") rows = rows.filter(h => h.isContract);
+  rows = rows.slice(0, 300); // render cap for performance
+
+  const body = document.getElementById("holderBody");
+  body.innerHTML = "";
+  for(const h of rows){
+    const val = rawToNumber(h.raw);
+    const pct = supplyNum ? (val/supplyNum*100).toFixed(2)+"%" : "—";
+    const tr = document.createElement("tr");
+    const label = h.name ? h.name : h.address.slice(0,8)+"…"+h.address.slice(-6);
+    tr.innerHTML = `
+      <td title="${h.address}">${label}</td>
+      <td>${h.isContract ? '<span class="tag contract">contract</span>' : '<span class="tag eoa">wallet</span>'}</td>
+      <td style="text-align:right;">${fmtNum(val)}</td>
+      <td style="text-align:right;" class="pct">${pct}</td>`;
+    body.appendChild(tr);
+  }
+}
+
+document.getElementById("filterGroup").addEventListener("click", (e) => {
+  if(e.target.tagName !== "BUTTON") return;
+  document.querySelectorAll("#filterGroup button").forEach(b => b.classList.remove("active"));
+  e.target.classList.add("active");
+  renderTable(e.target.dataset.filter);
+});
+
+async function checkAddress(){
+  const input = document.getElementById("addrInput").value.trim();
+  const resultEl = document.getElementById("result");
+  const btn = document.getElementById("checkBtn");
+  if(!/^0x[a-fA-F0-9]{40}$/.test(input)){
+    resultEl.innerHTML = `<div class="result-box none"><div><b>Enter a valid address</b><span style="color:var(--text-muted)">Format: 0x followed by 40 hex characters.</span></div></div>`;
+    return;
+  }
+  btn.disabled = true;
+  const match = holders.find(h => h.address.toLowerCase() === input.toLowerCase());
+  if(match){
+    const val = rawToNumber(match.raw);
+    resultEl.innerHTML = `
+      <div class="result-box risk">
+        <div>
+          <b>⚠ This wallet holds JUSD</b>
+          <span class="amount">${fmtNum(val)} JUSD</span>
+          <div style="margin-top:6px; color:var(--text-muted);">${match.isContract ? "This is a contract address (protocol infrastructure), not a personal wallet." : "Swap this before the deadline if you want to redeem it for USDT."}</div>
+        </div>
+      </div>`;
+  } else {
+    resultEl.innerHTML = `
+      <div class="result-box safe">
+        <div><b>✓ No JUSD balance found</b>
+        <div style="margin-top:4px; color:var(--text-muted);">This address does not currently appear in the JUSD holder list.</div></div>
+      </div>`;
+  }
+  btn.disabled = false;
+}
+document.getElementById("checkBtn").addEventListener("click", checkAddress);
+document.getElementById("addrInput").addEventListener("keydown", e => { if(e.key === "Enter") checkAddress(); });
+
+(async function init(){
+  try{
+    await Promise.all([fetchAllHolders(), fetchSupply()]);
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("tableHead").style.display = "flex";
+    document.getElementById("holderTable").style.display = "table";
+    renderStats();
+    renderTable("eoa");
+  } catch(err){
+    document.getElementById("loading").innerHTML =
+      `Could not load data from the Citrea explorer API (${err.message}). This can happen if the API blocks cross-origin requests from this host — try hosting this file yourself, or check <a href="https://explorer.mainnet.citrea.xyz/token/${TOKEN}?tab=holders" target="_blank">the explorer directly</a>.`;
+  }
+})();
+</script>
+</body>
+</html>
